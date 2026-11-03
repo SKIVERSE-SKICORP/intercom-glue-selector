@@ -99,6 +99,16 @@ table.mini td.glue{font-size:13px}
 .toast{font-size:12px;color:var(--accent);margin-top:6px;min-height:1em}
 @media(max-width:600px){.verdict{grid-template-columns:1fr}.verdict .glue{grid-row:auto;font-size:28px}}
 @media(prefers-reduced-motion:no-preference){.seg button,tr.main{transition:background .12s}}
+.syspick{display:grid;gap:12px}
+.syspick h2{font-size:14px;color:var(--ink);letter-spacing:.02em;text-transform:none}
+.sysgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.sysbtn{font:inherit;text-align:left;padding:16px 18px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:4px;cursor:pointer;display:grid;gap:4px}
+.sysbtn b{font-size:16px}.sysbtn span{font-size:12px;color:var(--muted)}
+.sysbtn:hover,.sysbtn[aria-pressed="true"]{border-color:var(--accent);background:var(--panel)}
+.sysbtn[aria-pressed="true"] b{color:var(--accent)}
+.syshead{font-size:13px;letter-spacing:.09em;margin:26px 0 8px;padding:8px 12px;background:var(--panel);border-left:4px solid var(--accent);color:var(--ink)}
+.hidden{display:none !important}
+td.sub.rem{white-space:normal;min-width:160px;max-width:260px}
 
 .lock{position:fixed;inset:0;background:var(--bg);z-index:50;display:grid;place-items:center;padding:20px}
 .lock[hidden]{display:none}
@@ -124,6 +134,10 @@ table.mini td.glue{font-size:13px}
 .adm-form input,.adm-form select{font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:3px;min-width:0;width:100%}
 .adm-form label.chk{grid-column:span 2;display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:13px;color:var(--ink)}
 .adm-form div.four{grid-column:span 2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.adm-form div.four[hidden]{display:none}
+.adm-form select{font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:3px;min-width:0;width:100%}
+.adm-box label.file+label,.adm-box>label{display:grid;gap:3px;font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:8px}
+.adm-box>label select{font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:3px}
 .adm-form button{grid-column:span 2;justify-self:start}
 label.file{display:block;font:inherit;font-size:14px;padding:12px;border:1.5px dashed var(--accent);border-radius:4px;text-align:center;color:var(--accent);cursor:pointer;text-transform:none;letter-spacing:0;margin-top:8px}
 label.file input{display:none}
@@ -139,12 +153,28 @@ label.file input{display:none}
   <div class="meta"><button class="adminbtn" id="adminBtn" hidden>Admin</button><button class="signout" id="signout" title="Forget access code on this device">Sign out</button><span id="brandMeta">INTERCOM · water-based adhesives · tensile N/mm</span><span><b id="nTests">0</b> tests</span><span><b id="nMats">0</b> materials</span><span><b id="nAdh">0</b> adhesives</span></div>
 </header>
 
+<section class="panel syspick" id="sysPick">
+  <h2>Which adhesive system do you want results for?</h2>
+  <div class="sysgrid">
+    <button type="button" class="sysbtn" data-sys="WB"><b>Water-based adhesives</b><span>Intercom · tensile N/mm at 2 min / 15 min / 60 min / 24 hrs</span></button>
+    <button type="button" class="sysbtn" data-sys="HM"><b>Hot-melt films &amp; webs</b><span>ALC thermo-adhesives · bond strength kgf/cm · GSM, temperature, pressure</span></button>
+    <button type="button" class="sysbtn" data-sys="BOTH"><b>Both</b><span>Water-based and hot-melt results, one below the other</span></button>
+  </div>
+</section>
+<div id="app" class="hidden">
 <section class="panel">
   <h2>Materials to bond</h2>
   <div class="slots" id="slots"></div>
   <div class="ctrls">
-    <div class="group"><span>Adhesive brand</span><select id="brand" style="min-width:160px"></select></div>
-    <div class="group"><span>Rank by strength at</span>
+    <div class="group"><span>Adhesive system</span>
+      <div class="seg" id="segSys" role="group">
+        <button data-sys="WB" aria-pressed="false">Water-based</button>
+        <button data-sys="HM" aria-pressed="false">Hot-melt</button>
+        <button data-sys="BOTH" aria-pressed="false">Both</button>
+      </div>
+    </div>
+    <div class="group" id="brandGroup"><span>Adhesive brand</span><select id="brand" style="min-width:160px"></select></div>
+    <div class="group" id="rankGroup"><span>Rank water-based by strength at</span>
       <div class="seg" id="seg" role="group">
         <button data-t="0" aria-pressed="false">2 min</button>
         <button data-t="1" aria-pressed="false">15 min</button>
@@ -170,12 +200,14 @@ label.file input{display:none}
   <div class="adm-grid">
     <div class="adm-box">
       <h2>Upload Excel</h2>
-      <p class="hint">Same column layout as the compatibility sheet (A–S). Rows already in the data are skipped.</p>
+      <p class="hint">Intercom sheet (A–S: materials, brand, adhesive, tensile @ 2/15/60 min/24 hrs) or ALC hot-melt sheet (materials, ALC adhesive, GSM, temperatures, pressure, bond strength). Rows already in the data are skipped.</p>
+      <label>Sheet layout<select id="admLayout"><option value="auto">Detect automatically</option><option value="WB">Intercom water-based</option><option value="HM">ALC hot-melt</option></select></label>
       <label class="file">Choose .xlsx file<input type="file" id="admFile" accept=".xlsx,.xls,.csv"></label>
     </div>
     <div class="adm-box">
       <h2>Add test report</h2>
       <form id="admForm" class="adm-form">
+        <label>Adhesive system<select id="f_sys"><option value="WB">Water-based (Intercom)</option><option value="HM">Hot-melt (ALC)</option></select></label>
         <label>Product type 1<input id="f_t1" list="dlTypes" required></label>
         <label>Material 1<input id="f_m1" list="dlMats" required></label>
         <label class="chk"><input type="checkbox" id="admSame" checked> Material 2 = Material 1 (compatibility test)</label>
@@ -185,8 +217,9 @@ label.file input{display:none}
         <label>Material 3 (optional)<input id="f_m3" list="dlMats"></label>
         <label>Adhesive brand<input id="f_b" value="INTERCOM"></label>
         <label>Adhesive name<input id="f_a" list="dlAdh" required></label>
-        <div class="four"><label>2 min<input id="f_v0" placeholder="N/mm or PB"></label><label>15 min<input id="f_v1" placeholder="N/mm or PB"></label><label>60 min<input id="f_v2" placeholder="N/mm or PB"></label><label>24 hrs<input id="f_v3" placeholder="N/mm or PB"></label></div>
-        <div class="four"><label>Drying (s)<input id="f_dry" type="number" min="0"></label><label>Open time (min)<input id="f_open" type="number" min="0"></label><label>Tack<select id="f_tack"><option value="">—</option><option>NIL</option><option>VERY LOW</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option></select></label><label>Customer tag<input id="f_cust"></label></div>
+        <div class="four" id="rowWB"><label>2 min<input id="f_v0" placeholder="N/mm or PB"></label><label>15 min<input id="f_v1" placeholder="N/mm or PB"></label><label>60 min<input id="f_v2" placeholder="N/mm or PB"></label><label>24 hrs<input id="f_v3" placeholder="N/mm or PB"></label></div>
+        <div class="four" id="rowWB2"><label>Drying (s)<input id="f_dry" type="number" min="0"></label><label>Open time (min)<input id="f_open" type="number" min="0"></label><label>Tack<select id="f_tack"><option value="">—</option><option>NIL</option><option>VERY LOW</option><option>LOW</option><option>MEDIUM</option><option>HIGH</option></select></label><label>Customer tag<input id="f_cust"></label></div>
+        <div class="four" id="rowHM" hidden><label>Bond strength<input id="f_h0" placeholder="kgf/cm or PB"></label><label>GSM<input id="f_gsm" type="number" min="0"></label><label>Temp upper °C<input id="f_tu" type="number"></label><label>Temp lower °C<input id="f_tl" type="number"></label><label>Pressure bar<input id="f_pr" type="number" step="0.01"></label><label style="grid-column:span 3">Remark<input id="f_rem" placeholder="e.g. Tearing bonding"></label></div>
         <div class="four"><label>Test date<input id="f_date" type="date"></label><label>Tested by<input id="f_by"></label><label style="grid-column:span 2">Note<input id="f_note"></label></div>
         <button type="submit" class="seg-btn">Stage this test</button>
       </form>
@@ -204,6 +237,7 @@ label.file input{display:none}
   </div>
 </section>
 </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -219,7 +253,7 @@ window.__exportPDF=async function(L,meta){
   const now=new Date(); const p2=n=>String(n).padStart(2,'0');
   const docno=`GSR-${now.getFullYear()}${p2(now.getMonth()+1)}${p2(now.getDate())}-${p2(now.getHours())}${p2(now.getMinutes())}`;
   const dateStr=`${p2(now.getDate())}-${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][now.getMonth()]}-${now.getFullYear()} ${p2(now.getHours())}:${p2(now.getMinutes())}`;
-  const T=['2 min','15 min','60 min','24 hrs'];
+  const T=L.T||['2 min','15 min','60 min','24 hrs']; const unit=L.unit||'N/mm'; const nT=T.length;
   const fv=v=>v==='PB'?'PB':(v==null?'n/t':Number(v).toFixed(2));
   const sc=v=>v==='PB'?99:(v==null?-1:v);
   const txt=(s,x,y,o)=>d.text(Array.isArray(s)?s:String(s),x,y,o||{});
@@ -230,7 +264,7 @@ window.__exportPDF=async function(L,meta){
   if(logoDU){const h=9,w=h*logoW/logoH;fill([255,255,255]);d.roundedRect(M,7,w+6,h+5,1.5,1.5,'F');try{d.addImage(logoDU,'PNG',M+3,9.5,w,h);}catch(e){}}
   col([255,255,255]); font('bold',15); txt('GLUE SELECTION REPORT',W-M,15,{align:'right'});
   font('normal',8.5); txt(`Doc No. ${docno}   ·   ${dateStr}`,W-M,21,{align:'right'});
-  txt(`Intercom water-based adhesives · tensile strength N/mm · source: compatibility test sheet (${meta})`,W-M,27,{align:'right'});
+  txt(`${L.sysName||'Intercom water-based adhesives'} · ${nT>1?'tensile strength':'bond strength'} ${unit} · source: compatibility test sheet (${meta})`,W-M,27,{align:'right'});
   let y=44;
   // materials to bond
   col(MUTED); font('bold',8); txt('MATERIALS TO BOND',M,y); y+=3;
@@ -247,8 +281,8 @@ window.__exportPDF=async function(L,meta){
     fill(TEAL); d.roundedRect(M,y,W-2*M,44,2,2,'F');
     col([255,255,255]); font('normal',7.5); txt(`RECOMMENDED ADHESIVE  ·  ranked by ${L.label}${L.direct?'  ·  from combination test (bonded directly)':'  ·  from compatibility test'+(L.sel.length>1?' (common glue, weakest-link)':'')}`,M+6,y+8);
     font('bold',26); txt(L.leadName,M+6,y+21);
-    font('normal',8); const sub=[L.lead.tack?`tack ${L.lead.tack}`:null,L.lead.open!=null?`open time ${L.lead.open} min`:null,L.lead.dry!=null?`drying ${L.lead.dry} s`:null,`${L.lead.n} test${L.lead.n>1?'s':''}`].filter(Boolean).join('   ·   '); txt(sub,M+6,y+39);
-    const tw=26,tx0=W-M-6-tw*4-3*3;
+    font('normal',8); const sub=[L.lead.tack?`tack ${L.lead.tack}`:null,L.lead.open!=null?`open time ${L.lead.open} min`:null,L.lead.dry!=null?`drying ${L.lead.dry} s`:null,L.lead.gsm!=null?`${L.lead.gsm} GSM`:null,L.lead.tu!=null?`${L.lead.tu}/${L.lead.tl??'—'} °C`:null,L.lead.pr!=null?`${L.lead.pr} bar`:null,L.lead.rem?L.lead.rem:null,`${L.lead.n} test${L.lead.n>1?'s':''}`].filter(Boolean).join('   ·   '); txt(sub,M+6,y+39);
+    const tw=nT>1?26:40,tx0=W-M-6-tw*nT-3*(nT-1);
     T.forEach((t,i)=>{const x=tx0+i*(tw+3); const on=String(i)===L.rankBy; fill(on?[255,255,255]:[40,130,114]); d.roundedRect(x,y+8,tw,24,1.5,1.5,'F');
       col(on?TEAL:[255,255,255]); font('bold',13); txt(fv(L.lead.t[i]),x+tw/2,y+20,{align:'center'}); font('normal',6.5); txt(t.toUpperCase(),x+tw/2,y+27,{align:'center'});});
     y+=52;
@@ -259,20 +293,20 @@ window.__exportPDF=async function(L,meta){
     if(!rows.length)return;
     if(y>H-60){d.addPage();y=20;}
     col(MUTED); font('bold',8); txt(title.toUpperCase(),M,y); y+=4;
-    const cols=[{k:'rk',w:8},{k:'a',w:34},{k:0,w:22},{k:1,w:22},{k:2,w:22},{k:3,w:22},{k:'bar',w:38},{k:'tk',w:14}];
+    const xw=nT>1?14:60; const cols=[{k:'rk',w:8},{k:'a',w:34},...T.map((_,i)=>({k:i,w:nT>1?22:28})),{k:'bar',w:W-2*M-8-34-(nT>1?22:28)*nT-xw},{k:'tk',w:xw}];
     let x=M; fill(PALE); d.rect(M,y,W-2*M,7,'F'); col(INK); font('bold',6.8);
-    const heads=['#','ADHESIVE','2 MIN','15 MIN','60 MIN','24 HRS',`STRENGTH @ ${L.label.toUpperCase()}`,'TACK'];
-    cols.forEach((c,i)=>{txt(heads[i],i>=2&&i<=5?x+c.w-2:x+2,y+4.8,i>=2&&i<=5?{align:'right'}:{});x+=c.w;}); y+=7;
-    const idx=L.rankBy==='all'?3:+L.rankBy; const mx=Math.max(0.01,...rows.map(r=>{const s=sc(r.t[idx]);return s===99?0:s;}));
+    const heads=['#','ADHESIVE',...T.map(t=>t.toUpperCase()+(nT>1?'':' '+unit.toUpperCase())),`STRENGTH @ ${L.label.toUpperCase()}`,(L.pdfCol||['TACK'])[0]];
+    cols.forEach((c,i)=>{txt(heads[i],i>=2&&i<2+nT?x+c.w-2:x+2,y+4.8,i>=2&&i<2+nT?{align:'right'}:{});x+=c.w;}); y+=7;
+    const idx=L.rankBy==='all'?nT-1:+L.rankBy; const mx=Math.max(0.01,...rows.map(r=>{const s=sc(r.t[idx]);return s===99?0:s;}));
     rows.slice(0,15).forEach((r,i)=>{
       if(y>H-28){d.addPage();y=20;}
       const rh=7.2; if(i===0){fill(AMBERBG);d.rect(M,y,W-2*M,rh,'F');} else if(i%2){fill([247,249,247]);d.rect(M,y,W-2*M,rh,'F');}
       line(LINE); d.setLineWidth(0.2); d.line(M,y+rh,W-M,y+rh);
       x=M; col(MUTED); font('normal',7); txt(String(i+1),x+2,y+4.9); x+=cols[0].w;
       col(INK); font('bold',8); txt(L.names[r.a]||r.a,x+2,y+4.9); if(i===0){col(AMBER);font('bold',5.5);txt('BEST',x+2+d.getTextWidth(L.names[r.a]||r.a)*8/5.5*0.69+3,y+4.9);} x+=cols[1].w;
-      font('normal',7.5); for(let t=0;t<4;t++){const v=r.t[t]; col(v==='PB'?AMBER:(v==null?MUTED:INK)); if(t===idx)font('bold',7.5); txt(fv(v),x+cols[2+t].w-2,y+4.9,{align:'right'}); font('normal',7.5); x+=cols[2+t].w;}
-      const s=sc(r.t[idx]); const w=s===99?1:(s<0?0:s/mx); fill(i===0?TEAL:[191,227,218]); d.roundedRect(x+2,y+2.3,Math.max(0.5,(cols[6].w-6)*w),2.6,0.6,0.6,'F'); x+=cols[6].w;
-      col(MUTED); font('normal',6.5); txt(r.tack||'—',x+2,y+4.9);
+      font('normal',7.5); for(let t=0;t<nT;t++){const v=r.t[t]; col(v==='PB'?AMBER:(v==null?MUTED:INK)); if(t===idx)font('bold',7.5); txt(fv(v),x+cols[2+t].w-2,y+4.9,{align:'right'}); font('normal',7.5); x+=cols[2+t].w;}
+      const s=sc(r.t[idx]); const w=s===99?1:(s<0?0:s/mx); fill(i===0?TEAL:[191,227,218]); d.roundedRect(x+2,y+2.3,Math.max(0.5,(cols[2+nT].w-6)*w),2.6,0.6,0.6,'F'); x+=cols[2+nT].w;
+      col(MUTED); font('normal',6.5); txt(d.splitTextToSize(String((L.pdfCol?L.pdfCol[1](r):r.tack)||'—'),cols[3+nT].w-3)[0],x+2,y+4.9);
       y+=rh;
     });
     if(rows.length>15){col(MUTED);font('normal',6.5);txt(`${rows.length-15} more adhesives not shown — see the app for the full list.`,M,y+4);y+=6;}
@@ -282,7 +316,7 @@ window.__exportPDF=async function(L,meta){
   else if(L.side){ if(y>H-60){d.addPage();y=20;} col(MUTED); font('bold',8); txt(`1 · COMPATIBILITY TEST — NO COMMON GLUE; EACH MATERIAL'S OWN RESULTS`,M,y); y+=4;
     L.side.forEach((list,k)=>{ if(y>H-40){d.addPage();y=20;} col(INK); font('bold',7.5); txt(d.splitTextToSize(L.sel[k],W-2*M)[0],M,y+3); y+=5;
       if(!list.length){col(MUTED);font('italic',7);txt('No compatibility test on this article.',M+2,y+3);y+=7;return;}
-      fill(PALE); d.rect(M,y,W-2*M,6,'F'); col(INK); font('bold',6.5); txt('ADHESIVE',M+2,y+4.2); T.forEach((t,i)=>txt(t.toUpperCase(),M+90+i*22+18,y+4.2,{align:'right'})); y+=6;
+      fill(PALE); d.rect(M,y,W-2*M,6,'F'); col(INK); font('bold',6.5); txt('ADHESIVE',M+2,y+4.2); T.forEach((t,i)=>txt(t.toUpperCase()+(nT>1?'':' '+unit.toUpperCase()),M+90+i*22+18,y+4.2,{align:'right'})); y+=6;
       list.slice(0,12).forEach(r=>{line(LINE);d.setLineWidth(0.2);d.line(M,y+5.8,W-M,y+5.8); col(INK); font('bold',7.5); txt(L.names[r.a]||r.a,M+2,y+4.2); font('normal',7.2); r.t.forEach((v,i)=>{col(v==='PB'?AMBER:(v==null?MUTED:INK));txt(fv(v),M+90+i*22+18,y+4.2,{align:'right'});}); y+=5.8;});
       y+=5; });
     y+=4; }
@@ -293,35 +327,45 @@ window.__exportPDF=async function(L,meta){
   if(L.lead&&L.lead.per&&L.lead.per.length>1){
     if(y>H-45){d.addPage();y=20;}
     col(MUTED); font('bold',8); txt(`${L.leadName} — RESULT ON EACH MATERIAL`,M,y); y+=4;
-    fill(PALE); d.rect(M,y,W-2*M,7,'F'); col(INK); font('bold',6.8); txt('MATERIAL',M+2,y+4.8); T.forEach((t,i)=>txt(t.toUpperCase(),M+110+i*20+18,y+4.8,{align:'right'})); txt('TESTS',W-M-2,y+4.8,{align:'right'}); y+=7;
+    fill(PALE); d.rect(M,y,W-2*M,7,'F'); col(INK); font('bold',6.8); txt('MATERIAL',M+2,y+4.8); T.forEach((t,i)=>txt(t.toUpperCase()+(nT>1?'':' '+unit.toUpperCase()),M+110+i*20+18,y+4.8,{align:'right'})); txt('TESTS',W-M-2,y+4.8,{align:'right'}); y+=7;
     L.lead.per.forEach((p,k)=>{line(LINE);d.line(M,y+6.5,W-M,y+6.5); col(INK); font('bold',7.5); txt(d.splitTextToSize(L.sel[k],100)[0],M+2,y+4.6); font('normal',7.5); p.t.forEach((v,i)=>{col(v===L.lead.t[i]&&sc(v)<99?[163,58,43]:INK);txt(fv(v),M+110+i*20+18,y+4.6,{align:'right'});}); col(MUTED); txt(String(p.n),W-M-2,y+4.6,{align:'right'}); y+=6.5;});
     col(MUTED); font('italic',6.5); txt('Red = the limiting (weakest-link) value used for ranking.',M,y+4); y+=8;
   }
   // notes + footer on every page
   const pages=d.getNumberOfPages();
   for(let p=1;p<=pages;p++){d.setPage(p); line(LINE); d.setLineWidth(0.3); d.line(M,H-16,W-M,H-16); col(MUTED); font('normal',6.3);
-    txt('PB = material broke before the bond (strongest possible result).  n/t = not tested in the sheet.  Best reading across repeat tests per cell.  Weakest-link = lowest of the selected materials\' values.',M,H-12);
-    txt('Results reflect SKICORP laboratory peel tests on the stated substrates; validate on production material before release.  Intercom SKICORP',M,H-8.5);
-    txt(`${docno}  ·  page ${p} of ${pages}`,W-M,H-8.5,{align:'right'});}
-  d.save(`Glue-Report_${L.sel.map(s=>s.replace(/[^A-Z0-9]+/gi,'-')).join('_')}_${docno}.pdf`);
+    txt(`PB = material broke/tore before the bond (strongest result)  ·  n/t = not tested  ·  best reading across repeat tests  ·  weakest-link = lowest value across the selected materials  ·  values in ${unit}`,M,H-12);
+    txt(`Results reflect SKICORP laboratory peel tests on the stated substrates; validate on production material before release.  ${nT>1?'Intercom SKICORP':'ALC SKICORP Thermoadhesives'}`,M,H-8.5);
+    txt(`${docno}  ·  page ${p} of ${pages}`,W-M,H-4.5,{align:'right'});}
+  d.save(`Glue-Report_${nT>1?'WB':'HM'}_${L.sel.map(s=>s.replace(/[^A-Z0-9]+/gi,'-')).join('_')}_${docno}.pdf`);
 };
 </script>
 <script>
 window.__startApp=function(){
-const T=['2 min','15 min','60 min','24 hrs'];
+const SYS={
+  WB:{name:'Water-based adhesives · Intercom',T:['2 min','15 min','60 min','24 hrs'],unit:'N/mm',rank:'3',sec1:'Compatibility test · material bonded to itself',
+      extra:[['Dry s',r=>r.dry],['Open min',r=>r.open],['Tack',r=>r.tack]],pdfCol:['TACK',r=>r.tack]},
+  HM:{name:'Hot-melt films & webs · ALC',T:['Bond strength'],unit:'kgf/cm',rank:'0',sec1:'Compatibility test · single material',
+      extra:[['GSM',r=>r.gsm],['Temp °C up/low',r=>(r.tu!=null||r.tl!=null)?`${r.tu??'—'} / ${r.tl??'—'}`:null],['Press. bar',r=>r.pr],['Remark',r=>r.rem]],pdfCol:['GSM · °C · BAR · REMARK',r=>[r.gsm,r.tu,r.pr].map(x=>x??'—').join(' · ')+(r.rem?' · '+r.rem:'')]}};
+const XF=['dry','open','tack','gsm','tu','tl','pr','rem'];
+let sys=null, CUR='WB', T=SYS.WB.T; const rank={WB:'3',HM:'0'};
+const active=()=>sys==='BOTH'?['WB','HM']:[sys||'WB'];
+function use(k){CUR=k;T=SYS[k].T;rankBy=rank[k];}
 let DB=window.__DB;
 let slots=[{mode:'type',t:'',m:'',f:''},{mode:'type',t:'',m:'',f:''},{mode:'type',t:'',m:'',f:''}];
 let rankBy='3', topN=10, open=new Set(), brand='';
-const ROWS=()=>DB.rows.filter(r=>!brand||r.b===brand);
-const NB=()=>{const rs=ROWS();return {t:rs.length,m:new Set(rs.flatMap(r=>r.m)).size,a:new Set(rs.map(r=>r.a)).size};};
+const rowsOf=k=>DB.rows.filter(r=>(r.k||'WB')===k&&(k!=='WB'||!brand||r.b===brand));
+const ROWS=()=>rowsOf(CUR);
+const NB=()=>{const rs=active().flatMap(rowsOf);return {t:rs.length,m:new Set(rs.flatMap(r=>r.m)).size,a:new Set(rs.map(r=>r.a)).size};};
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmt=v=>v==='PB'?'<span class="pb">PB</span>':(v==null?'<span class="na" title="Not tested in the sheet">n/t</span>':v.toFixed(2));
 const score=v=>v==='PB'?99:(v==null?-1:v);
 
-function types(){return [...new Set(Object.values(DB.materials))].sort();}
-function matsOf(t){return Object.keys(DB.materials).filter(k=>DB.materials[k]===t).sort();}
+function matsIn(){const s=new Set();active().forEach(k=>rowsOf(k).forEach(r=>r.m.forEach(n=>s.add(n))));return [...s].sort();}
+function types(){return [...new Set(matsIn().map(n=>DB.materials[n]||'OTHER'))].sort();}
+function matsOf(t){return matsIn().filter(n=>(DB.materials[n]||'OTHER')===t);}
 
 function renderSlots(){
   const el=$('slots'); el.innerHTML='';
@@ -331,7 +375,7 @@ function renderSlots(){
     const active=s.t||s.m;
     let body='';
     if(mode==='name'){
-      const list=(s.f?matsOf(s.f):Object.keys(DB.materials).sort());
+      const list=(s.f?matsOf(s.f):matsIn());
       const grouped={}; list.forEach(m=>{(grouped[DB.materials[m]||'OTHER']=grouped[DB.materials[m]||'OTHER']||[]).push(m);});
       body=`<label>Filter by product type (optional)<select id="type${i}" data-i="${i}" data-k="f"><option value="">All product types</option>${types().map(t=>`<option ${t===s.f?'selected':''}>${esc(t)}</option>`).join('')}</select></label>
       <label>Material name<select id="mat${i}" data-i="${i}" data-k="m"><option value="">— select material (${list.length}) —</option>${Object.keys(grouped).sort().map(g=>`<optgroup label="${esc(g)}">${grouped[g].map(m=>`<option ${m===s.m?'selected':''}>${esc(m)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
@@ -356,8 +400,8 @@ $('slots').addEventListener('click',e=>{
   if(e.target.dataset.clear!=null){const i=+e.target.dataset.clear;slots[i]={mode:slots[i].mode||'type',t:'',m:'',f:''};open.clear();renderSlots();renderResult();return;}
   const mb=e.target.closest('.mode button'); if(mb){const i=+mb.closest('.mode').dataset.i; slots[i]={mode:mb.dataset.mode,t:'',m:'',f:''}; open.clear(); renderSlots(); renderResult();}
 });
-$('pdfBtn').addEventListener('click',()=>{if(window.__LAST&&window.__LAST.lead)window.__exportPDF(window.__LAST,`${brand||'all brands'} · ${ROWS().length} tests`);});
-$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;rankBy=b.dataset.t;[...$('seg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderResult();});
+$('pdfBtn').addEventListener('click',async()=>{for(const L of (window.__LASTS||[])){if(L.lead||(L.side&&L.side.some(l=>l.length)))await window.__exportPDF(L,`${L.k==='WB'?(brand||'all brands'):'ALC'} · ${rowsOf(L.k).length} tests`);}});
+$('seg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;rank.WB=b.dataset.t;[...$('seg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderResult();});
 $('segN').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;topN=+b.dataset.n;[...$('segN').children].forEach(x=>x.setAttribute('aria-pressed',x===b));renderResult();});
 
 // best result for (material, adhesive): prefer self-bond tests, else any test including the material. Max per time point.
@@ -368,15 +412,15 @@ function matProfile(s){
   const self={};
   for(const r of ROWS()){
     if(!r.m.every(n=>hit(s,n)))continue;
-    const p=self[r.a]||(self[r.a]={t:[null,null,null,null],n:0,dry:r.dry,open:r.open,tack:r.tack,src:'self'});
+    const p=self[r.a]||(self[r.a]={t:T.map(()=>null),n:0,src:'self'});
     p.n++; r.t.forEach((v,i)=>{if(score(v)>score(p.t[i]))p.t[i]=v;});
-    if(p.dry==null)p.dry=r.dry; if(p.open==null)p.open=r.open; if(!p.tack)p.tack=r.tack;
+    XF.forEach(f=>{if(p[f]==null&&r[f]!=null)p[f]=r[f];});
   }
   return self;
 }
 function rankKey(t){
-  if(rankBy==='all'){const s=t.map(score);return [s.reduce((a,b)=>a+Math.max(b,0),0)+(s.some(x=>x<0)?-1000:0),s[3]];}
-  return [score(t[+rankBy]),score(t[3])];
+  const L=T.length-1; if(rankBy==='all'){const s=t.map(score);return [s.reduce((a,b)=>a+Math.max(b,0),0)+(s.some(x=>x<0)?-1000:0),s[L]];}
+  return [score(t[+rankBy]),score(t[L])];
 }
 function cmp(a,b){const ka=rankKey(a.t),kb=rankKey(b.t);return kb[0]-ka[0]||kb[1]-ka[1];}
 const valsLine=t=>T.map((n,i)=>`${n} <b>${t[i]==='PB'?'PB':(t[i]==null?'n/t':t[i].toFixed(2))}</b>`).join(' · ');
@@ -386,17 +430,24 @@ function sideBySide(profiles,sel){
 }
 
 function renderResult(){
+  const el=$('result'); const selS=slots.filter(s=>s.t);
+  if(selS.length===0){window.__LASTS=[];$('pdfBtn').disabled=true;el.innerHTML='<div class="empty">Pick a product type (and a material name if you want) for Material 1 — and Material 2 for a pair. Search works by material name or by whole product type.</div>';return;}
+  let h=''; const Ls=[]; const ks=active();
+  for(const k of ks){ use(k); const out=renderSys(); if(ks.length>1)h+=`<h2 class="syshead">${esc(SYS[k].name)}</h2>`; h+=out.h; Ls.push(out.L); }
+  window.__LASTS=Ls; window.__LAST=Ls[0];
+  $('pdfBtn').disabled=!Ls.some(L=>L.lead||(L.side&&L.side.some(l=>l.length)));
+  el.innerHTML=h;
+}
+function renderSys(){
   const selS=slots.filter(s=>s.t); const sel=selS.map(lab);
-  const el=$('result');
-  if(sel.length===0){window.__LAST=null;$('pdfBtn').disabled=true;el.innerHTML='<div class="empty">Pick a product type (and a material name if you want) for Material 1 — and Material 2 for a pair. Search works by material name or by whole product type.</div>';return;}
-  const label=rankBy==='all'?'all four time points':T[+rankBy];
+  const label=T.length===1?'bond strength ('+SYS[CUR].unit+')':(rankBy==='all'?'all four time points':T[+rankBy]);
   // ---------- SECTION 1: COMPATIBILITY (self-bond rows only)
   const profiles=selS.map(matProfile);
   const common=Object.keys(profiles[0]).filter(a=>profiles.every(p=>p[a]));
   const rows=common.map(a=>{
     const per=profiles.map(p=>p[a]);
-    const t=[0,1,2,3].map(i=>{let w=null,ws=Infinity;per.forEach(p=>{const s=score(p.t[i]);if(s<ws){ws=s;w=p.t[i];}});return w;});
-    return {a,t,per,n:per.reduce((x,p)=>x+p.n,0),dry:per[0].dry,open:per[0].open,tack:per[0].tack};
+    const t=T.map((_,i)=>{let w=null,ws=Infinity;per.forEach(p=>{const s=score(p.t[i]);if(s<ws){ws=s;w=p.t[i];}});return w;});
+    const o={a,t,per,n:per.reduce((x,p)=>x+p.n,0)}; XF.forEach(f=>{o[f]=per[0][f];}); return o;
   }).sort(cmp);
   // ---------- SECTION 2: COMBINATION (rows that are exactly this combination)
   const key=selS.map((s,i)=>i).sort().join('|');
@@ -405,8 +456,8 @@ function renderResult(){
     const idx=r.m.map(n=>{let k=selS.findIndex(s=>s.m&&hit(s,n));if(k<0)k=selS.findIndex(s=>!s.m&&hit(s,n));return k;});
     if(idx.some(k=>k<0))continue;
     const rk=[...new Set(idx)].sort().join('|'); if(rk!==key)continue;
-    const p=pairMap[r.a]||(pairMap[r.a]={a:r.a,t:[null,null,null,null],n:0,dry:r.dry,open:r.open,tack:r.tack});
-    p.n++; r.t.forEach((v,i)=>{if(score(v)>score(p.t[i]))p.t[i]=v;});
+    const p=pairMap[r.a]||(pairMap[r.a]={a:r.a,t:T.map(()=>null),n:0});
+    p.n++; r.t.forEach((v,i)=>{if(score(v)>score(p.t[i]))p.t[i]=v;}); XF.forEach(f=>{if(p[f]==null&&r[f]!=null)p[f]=r[f];});
   }
   const pairs=Object.values(pairMap).sort(cmp);
 
@@ -415,16 +466,16 @@ function renderResult(){
   if(lead){
     const src=pairs[0]?`from the combination test (${sel.map(esc).join(' + ')} tested directly)`:(sel.length>1?`from the compatibility test — common glue, weakest-link across ${sel.length} materials`:'from the compatibility test');
     h+=`<div class="verdict"><div class="k">Recommended · ranked by ${label}</div><div class="glue">${esc(DB.adhesives[lead.a]||lead.a)}</div>
-      <div class="why">${valsLine(lead.t)} N/mm — ${src}${lead.tack?` · tack ${esc(lead.tack)}`:''}${lead.open!=null?` · open time ${lead.open} min`:''}</div></div>`;
+      <div class="why">${valsLine(lead.t)} ${SYS[CUR].unit} — ${src}${lead.tack?` · tack ${esc(lead.tack)}`:''}${lead.open!=null?` · open time ${lead.open} min`:''}${lead.gsm!=null?` · ${lead.gsm} GSM`:''}${lead.tu!=null?` · ${lead.tu}/${lead.tl??'—'} °C`:''}${lead.pr!=null?` · ${lead.pr} bar`:''}${lead.rem?` · ${esc(lead.rem)}`:''}</div></div>`;
   } else {
     h+=`<div class="empty">No recommendation possible: no common compatibility glue and no direct combination test for ${sel.map(esc).join(' + ')}.</div>`;
   }
-  {const gaps=profiles.map((p,i)=>({m:sel[i],miss:Object.keys(p).length?[0,1,2].filter(t=>Object.values(p).every(x=>x.t[t]==null)).map(t=>T[t]):[]})).filter(g=>g.miss.length);
+  {const gaps=profiles.map((p,i)=>({m:sel[i],miss:(Object.keys(p).length&&T.length>1)?[0,1,2].filter(t=>Object.values(p).every(x=>x.t[t]==null)).map(t=>T[t]):[]})).filter(g=>g.miss.length);
     window.__GAPS=gaps.map(g=>`${g.m} at ${g.miss.join(' / ')}`).join('; ');
     if(gaps.length)h+=`<p class="note" style="margin:0 0 12px"><span style="color:var(--amber)">Not tested in the sheet: ${gaps.map(g=>`${esc(g.m)} at ${g.miss.join(' / ')}`).join('; ')} — only the measured time points can be ranked.</span></p>`;}
 
   // Section 1 render
-  h+=`<div class="pairs"><h2><span class="sec">1</span> Compatibility test · material bonded to itself <span class="tag">${sel.length>1?`${rows.length} common glues`:`${rows.length} glues`}</span></h2>`;
+  h+=`<div class="pairs"><h2><span class="sec">1</span> ${SYS[CUR].sec1} <span class="tag">${sel.length>1?`${rows.length} common glues`:`${rows.length} glues`}</span></h2>`;
   if(sel.length===1){
     h+=rows.length?table(rows,false):`<div class="empty">No compatibility test on ${esc(sel[0])} in the sheet.</div>`;
   } else if(rows.length){
@@ -439,24 +490,23 @@ function renderResult(){
     h+=pairs.length?table(pairs,false):`<div class="empty">No direct combination test found for ${sel.map(esc).join(' + ')}.</div>`;
     h+=`</div>`;
   }
-  h+=`<p class="note"><span><b>PB</b> = material broke before the bond (strongest possible result)</span><span><b>n/t</b> = not tested in the sheet</span><span>Best reading across repeat tests per cell (and across all articles of a type when ANY is chosen)</span></p>`;
-  window.__LAST={sel,types:selS.map(s=>s.t),lead,leadName:lead?(DB.adhesives[lead.a]||lead.a):'',direct:!!pairs[0],pairs,rows,side:(sel.length>1&&!rows.length)?profiles.map(p=>Object.keys(p).map(a=>({a,t:p[a].t,n:p[a].n})).sort(cmp)):null,label,rankBy,names:DB.adhesives,gaps:(window.__GAPS||'')};
-  $('pdfBtn').disabled=!(lead||(window.__LAST.side&&window.__LAST.side.some(l=>l.length)));
-  el.innerHTML=h;
+  h+=`<p class="note"><span><b>PB</b> = material broke / tore before the bond (strongest possible result)</span><span>Values in <b>${SYS[CUR].unit}</b></span><span><b>n/t</b> = not tested in the sheet</span><span>Best reading across repeat tests per cell (and across all articles of a type when ANY is chosen)</span></p>`;
+  const L={k:CUR,T,unit:SYS[CUR].unit,sysName:SYS[CUR].name,pdfCol:SYS[CUR].pdfCol,sel,types:selS.map(s=>s.t),lead,leadName:lead?(DB.adhesives[lead.a]||lead.a):'',direct:!!pairs[0],pairs,rows,side:(sel.length>1&&!rows.length)?profiles.map(p=>Object.keys(p).map(a=>({a,t:p[a].t,n:p[a].n})).sort(cmp)):null,label,rankBy,names:DB.adhesives,gaps:(window.__GAPS||'')};
+  return {h,L};
 }
 function table(list,expandable){
   const shown=list.slice(0,topN);
-  const max=[0,1,2,3].map(i=>Math.max(0,...list.map(r=>{const s=score(r.t[i]);return s===99?0:s;})));
-  let h=`<div class="tbl-wrap"><table><thead><tr><th></th><th>Adhesive</th>${T.map((n,i)=>`<th class="num ${String(i)===rankBy?'sorted':''}">${n}</th>`).join('')}<th class="num">Tests</th><th>Dry s</th><th>Open min</th><th>Tack</th></tr></thead><tbody>`;
+  const max=T.map((_,i)=>Math.max(0,...list.map(r=>{const s=score(r.t[i]);return s===99?0:s;}))); const EX=SYS[CUR].extra; const u=T.length===1?' ('+SYS[CUR].unit+')':'';
+  let h=`<div class="tbl-wrap"><table><thead><tr><th></th><th>Adhesive</th>${T.map((n,i)=>`<th class="num ${String(i)===rankBy?'sorted':''}">${n}${u}</th>`).join('')}<th class="num">Tests</th>${EX.map(x=>`<th>${x[0]}</th>`).join('')}</tr></thead><tbody>`;
   shown.forEach((r,idx)=>{
     const isOpen=open.has(r.a);
     h+=`<tr class="main ${idx===0?'best':''}" data-a="${esc(r.a)}" data-x="${expandable?1:0}"><td class="rank">${idx+1}</td><td class="glue">${esc(DB.adhesives[r.a]||r.a)}</td>`;
     r.t.forEach((v,i)=>{const s=score(v);const w=s===99?100:(s<0?0:(max[i]?s/max[i]*100:0));
       h+=`<td class="num"><span class="cell"><i class="${idx===0&&String(i)===rankBy?'top':''}" style="width:${w.toFixed(0)}%"></i><span>${fmt(v)}</span></span></td>`;});
-    h+=`<td class="num sub">${r.n}</td><td class="sub">${r.dry??'—'}</td><td class="sub">${r.open??'—'}</td><td class="sub">${r.tack?esc(r.tack):'—'}</td></tr>`;
+    h+=`<td class="num sub">${r.n}</td>${EX.map(x=>{const v=x[1](r);return `<td class="sub ${x[0]==='Remark'?'rem':''}">${v==null||v===''?'—':esc(v)}</td>`;}).join('')}</tr>`;
     if(expandable&&isOpen){
       const sel=window.__labels||slots.filter(s=>s.t).map(lab);
-      h+=`<tr class="detail"><td colspan="10"><div class="dt"><div class="h">Material</div>${T.map(n=>`<div class="h r">${n}</div>`).join('')}<div class="h r">Tests</div>`;
+      h+=`<tr class="detail"><td colspan="${3+T.length+EX.length}"><div class="dt"><div class="h">Material</div>${T.map(n=>`<div class="h r">${n}</div>`).join('')}<div class="h r">Tests</div>`;
       r.per.forEach((p,k)=>{h+=`<div class="m">${esc(sel[k])}${p.src==='pair'?' <span class="tag">from pair test</span>':''}</div>${p.t.map((v,i)=>`<div class="r ${v===r.t[i]&&score(v)<99?'w':''}">${fmt(v)}</div>`).join('')}<div class="r">${p.n}</div>`;});
       h+=`</div></td></tr>`;
     }
@@ -470,13 +520,19 @@ $('result').addEventListener('click',e=>{
   const a=tr.dataset.a; open.has(a)?open.delete(a):open.add(a); renderResult();
 });
 
-function brands(){const bs=[...new Set(DB.rows.map(r=>r.b))].sort();const el=$('brand');el.innerHTML=bs.map(b=>`<option>${esc(b)}</option>`).join('')+(bs.length>1?'<option value="">ALL BRANDS</option>':'');brand=bs.includes('INTERCOM')?'INTERCOM':(bs.includes(brand)?brand:bs[0]);el.value=brand;$('brandMeta').textContent=(brand||'All brands')+' · water-based adhesives · tensile N/mm';}
-$('brand').addEventListener('change',e=>{brand=e.target.value;$('brandMeta').textContent=(brand||'All brands')+' · water-based adhesives · tensile N/mm';open.clear();stats();renderResult();});
+function meta(){const parts=active().map(k=>k==='WB'?((brand||'All brands')+' · water-based · N/mm'):'ALC · hot-melt · kgf/cm');$('brandMeta').textContent=parts.join('  |  ');}
+function brands(){const bs=[...new Set(DB.rows.filter(r=>(r.k||'WB')==='WB').map(r=>r.b))].sort();const el=$('brand');el.innerHTML=bs.map(b=>`<option>${esc(b)}</option>`).join('')+(bs.length>1?'<option value="">ALL BRANDS</option>':'');brand=bs.includes('INTERCOM')?'INTERCOM':(bs.includes(brand)?brand:bs[0]);el.value=brand;meta();}
+$('brand').addEventListener('change',e=>{brand=e.target.value;meta();open.clear();stats();renderSlots();renderResult();});
+function setSys(k){sys=k;[...$('segSys').children].forEach(x=>x.setAttribute('aria-pressed',x.dataset.sys===k));[...$('sysPick').querySelectorAll('.sysbtn')].forEach(x=>x.setAttribute('aria-pressed',x.dataset.sys===k));
+  $('brandGroup').classList.toggle('hidden',k==='HM');$('rankGroup').classList.toggle('hidden',k==='HM');$('app').classList.remove('hidden');$('sysPick').classList.add('hidden');
+  try{localStorage.setItem('glueSys',k);}catch(e){} open.clear();brands();stats();renderSlots();renderResult();}
+$('segSys').addEventListener('click',e=>{const b=e.target.closest('button');if(b)setSys(b.dataset.sys);});
+$('sysPick').addEventListener('click',e=>{const b=e.target.closest('.sysbtn');if(b)setSys(b.dataset.sys);});
 function stats(){const n=NB();$('nTests').textContent=n.t;$('nMats').textContent=n.m;$('nAdh').textContent=n.a;}
 // opening state: a real working example
 slots[0]={mode:'type',t:'LEATHER',m:'',f:''}; slots[1]={mode:'type',t:'LEATHERBOARD',m:'',f:''};
-brands(); stats(); renderSlots(); renderResult();
-window.__restart=()=>{DB=window.__DB||DB; open.clear(); brands(); stats(); renderSlots(); renderResult();};
+{let last=null;try{last=localStorage.getItem('glueSys');}catch(e){} [...$('sysPick').querySelectorAll('.sysbtn')].forEach(x=>x.setAttribute('aria-pressed',x.dataset.sys===last));}
+window.__restart=()=>{DB=window.__DB||DB; if(sys){open.clear(); brands(); stats(); renderSlots(); renderResult();}};
 // The viewer may restore earlier dropdown values after load without firing change events: reconcile DOM -> state.
 function reconcile(){
   let changed=false;
@@ -509,7 +565,19 @@ const TYPE_MERGE={'PU , PVC , SYNTHETIC LEATHER':'PU / PVC / SYNTHETIC LEATHER',
 const clean=s=>{if(s==null)return null;s=String(s).replace(/\s+/g,' ').trim().toUpperCase().replace(/\s*-\s+/g,' - ').replace(/(\S)\(/g,'$1 (');return s||null;};
 const num=v=>{if(typeof v==='number')return v;if(v==null||v==='')return null;const m=String(v).match(/[\d.]+/);return m?parseFloat(m[0]):null;};
 const val=v=>{if(typeof v==='number')return Math.round(v*100)/100;if(v==null)return null;const s=String(v).trim().toUpperCase();if(s==='PB')return 'PB';const n=parseFloat(s);return isNaN(n)?null:Math.round(n*100)/100;};
-const rowKey=r=>[r.m.join('|'),r.a,r.t.map(v=>v==null?'':v).join(',')].join('#');
+const cleanHM=s=>{if(s==null)return null;s=String(s).replace(/\s+/g,' ').trim().toUpperCase().replace(/\s*-\s*/g,' - ').replace(/(\S)\(/g,'$1 (').replace(/\s*-\s*$/,'').trim().replace(/POLYSTER/g,'POLYESTER').replace(/LINNING/g,'LINING').replace(/SEUDE/g,'SUEDE').replace(/POLESTER/g,'POLYESTER');return s||null;};
+const numHM=v=>{if(typeof v==='number')return v;if(v==null)return null;const m=String(v).replace('..','.').match(/\s*(\d+(?:\.\d+)?)/);return m?parseFloat(m[1]):null;};
+const TYPE_HM={'LEATHER BOARD':'LEATHERBOARD','PU LEATHER':'PU / PVC / SYNTHETIC LEATHER','PVC LEATHER':'PU / PVC / SYNTHETIC LEATHER','WOVEN FABRIC':'FABRIC','KNITTED FABRIC':'FABRIC'};
+function inferHM(n){ if(n.includes('FOAM')||n.includes('SEEDPEARL'))return 'FOAM'; if(n==='CELLULOSE BOARD')return 'CELLULOSE BOARD'; if(n.startsWith('NON-WOVEN')||n.startsWith('FELT'))return 'NON WOVEN FABRIC';
+  if(n.includes(' - ')){const t=n.split(' - ')[0];return TYPE_HM[t]||t;}
+  if(n.includes('LEATHER BOARD')||['LIBO','BROAD'].includes(n))return 'LEATHERBOARD';
+  if(n.startsWith('PU')||n.includes('PU ')||n.endsWith(' PU')||n.includes('PVC')||n.includes('SYNTHETIC')||n.includes('NUBUCK'))return 'PU / PVC / SYNTHETIC LEATHER';
+  if(n.includes('LEATHER')||n==='SUEDE')return 'LEATHER'; if(n.includes('NON WOVEN')||n.includes('NON-WOVEN')||n.includes('FELT')||n.includes('FUSING')||n.includes('NEEDLE MAT'))return 'NON WOVEN FABRIC';
+  if(n.includes('LINING'))return 'LINING'; if(n.includes('MICRO'))return 'MICROFIBER'; if(n.includes('EVA')||n==='RUBBER')return 'EVA / RUBBER';
+  if(n.includes('GLASS')||n.includes('KEVLAR')||n.includes('ALUMINIUM')||n.includes('METAL')||n.includes('HDPE')||['PE','PLEXI GLASS','BLACKOUT FILM'].includes(n))return 'TECHNICAL / OTHER';
+  if(n.includes('PAPER'))return 'PAPER'; if(n.includes('CANVAS'))return 'CANVAS';
+  if(['FABRIC','COTTON','NYLON','MESH','VELVET','FLEECE','POLYESTER','VISCOSE','SEQUIN','GREIGE','OTTOMAN','INTERLOCK','SPANDEX','LYCRA','JEANS','NET','SPACER','DUROPLUSH','ALGC','TRICOT'].some(k=>n.includes(k)))return 'FABRIC'; return 'OTHER'; }
+const rowKey=r=>[r.k||'WB',r.m.join('|'),r.a,r.t.map(v=>v==null?'':v).join(',')].join('#');
 function existingKeys(){const s=new Set(); window.__DB.rows.forEach(r=>s.add(rowKey(r))); return s;}
 function stageRows(rows,label){
   const have=existingKeys(); pending.forEach(r=>have.add(rowKey(r)));
@@ -519,7 +587,7 @@ function stageRows(rows,label){
 function renderPending(){
   const el=$('admPending'); $('admPubBtn').disabled=!pending.length;
   if(!pending.length){el.innerHTML='<p class="hint">Nothing staged. Upload an Excel file or add a test report, then Publish.</p>';return;}
-  el.innerHTML=`<p class="hint"><b>${pending.length}</b> test${pending.length===1?'':'s'} staged, not yet published:</p><div class="tbl-wrap"><table class="mini"><thead><tr><th>Materials</th><th>Adhesive</th><th class="num">2 min</th><th class="num">15 min</th><th class="num">60 min</th><th class="num">24 hrs</th><th></th></tr></thead><tbody>${pending.slice(-50).map((r,i)=>`<tr><td>${esc(r.m.join(' + '))}</td><td class="glue">${esc(r.a)}</td>${r.t.map(v=>`<td class="num">${v==null?'n/t':v}</td>`).join('')}<td><button class="btn-x" data-unstage="${pending.length-Math.min(50,pending.length)+i}">remove</button></td></tr>`).join('')}</tbody></table></div>${pending.length>50?`<p class="hint">Showing last 50.</p>`:''}`;
+  el.innerHTML=`<p class="hint"><b>${pending.length}</b> test${pending.length===1?'':'s'} staged, not yet published:</p><div class="tbl-wrap"><table class="mini"><thead><tr><th>Materials</th><th>Adhesive</th><th>System</th><th class="num">2 min</th><th class="num">15 min</th><th class="num">60 min</th><th class="num">24 hrs / bond</th><th></th></tr></thead><tbody>${pending.slice(-50).map((r,i)=>`<tr><td>${esc(r.m.join(' + '))}</td><td class="glue">${esc(r.a)}</td><td class="sub">${r.k==='HM'?'Hot-melt':'Water-based'}</td>${(r.k==='HM'?[null,null,null,r.t[0]]:r.t).map((v,i)=>`<td class="num">${r.k==='HM'&&i<3?'':(v==null?'n/t':v)}</td>`).join('')}<td><button class="btn-x" data-unstage="${pending.length-Math.min(50,pending.length)+i}">remove</button></td></tr>`).join('')}</tbody></table></div>${pending.length>50?`<p class="hint">Showing last 50.</p>`:''}`;
 }
 function toast(m,err){const t=$('admMsg');t.textContent=m;t.style.color=err?'var(--danger)':'var(--accent)';}
 // ---- Excel upload
@@ -529,10 +597,18 @@ $('admFile').addEventListener('change',ev=>{
   rd.onload=()=>{try{
     const wb=XLSX.read(rd.result,{type:'array'}); const ws=wb.Sheets[wb.SheetNames[0]]; const arr=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
     const rows=[]; const DBm=window.__DB.materials;
+    const hdrRow=arr.find(r=>r&&String(r[7]||'').toUpperCase().includes('ADHESIVE BRAND'))||[]; const isALC=$('admLayout').value==='HM'||(($('admLayout').value==='auto')&&(String(hdrRow[9]||'').toUpperCase().includes('ADHESIVE NAME')||arr.some(r=>r&&String(r[7]||'').toUpperCase()==='ALC')));
+    if(isALC){
+      for(const r of arr){ if(!r||!r.slice(0,10).some(x=>x!=null))continue; const h0=String(r[0]||'').toUpperCase(); if(h0.startsWith('MATERIALS')||h0.startsWith('PRODUCT TYPE'))continue;
+        const m=[]; [0,2,4,6].forEach(ci=>{let n=cleanHM(r[ci]); if(n&&n!=='?'){n=n.replace('NON - WOVEN','NON-WOVEN'); m.push(n); if(!DBm[n])DBm[n]=inferHM(n);}});
+        let ad=cleanHM(r[9]); if(!ad||!m.length)continue; ad=ad.replace(' (500 MTR)','').replace(/ /g,''); window.__DB.adhesives[ad]=window.__DB.adhesives[ad]||ad;
+        let v=numHM(r[26]); if(v==null&&numHM(r[25])!=null)v=numHM(r[25])/5; if(v==null&&numHM(r[27])!=null)v=numHM(r[27])/9.8; const rem=cleanHM(r[28]); if(v==null&&rem&&(rem.includes('TEAR')||rem.includes('BROKE')))v='PB'; if(typeof v==='number')v=Math.round(v*100)/100;
+        rows.push({m:m.length>1?m:[m[0],m[0]],a:ad,b:'ALC',k:'HM',t:[v],gsm:numHM(r[10]),tu:numHM(r[21]),tl:numHM(r[22]),pr:numHM(r[23]),rem:rem,cust:cleanHM(r[16]),src:'xlsx:'+f.name,added:new Date().toISOString().slice(0,10)}); }
+    } else
     for(const r of arr){ if(!r||!r.slice(0,9).some(x=>x!=null))continue; const hdr=String(r[0]||'').toUpperCase(); if(hdr.startsWith('MATERIALS')||hdr.startsWith('PRODUCT TYPE'))continue;
       const m=[];[[0,1],[2,3],[4,5]].forEach(([ti,ni])=>{const n=clean(r[ni]);if(n){m.push(n);let t=clean(r[ti]);t=TYPE_MERGE[t]||t||DBm[n]||'OTHER';if(!DBm[n]||DBm[n]==='OTHER')DBm[n]=t;}});
       const ad=clean(r[8]); if(!ad||!m.length)continue; const a=ad.replace(/ /g,''); window.__DB.adhesives[a]=window.__DB.adhesives[a]||ad; const tack=clean(r[18]);
-      rows.push({m,a,b:clean(r[6])||'INTERCOM',t:[9,10,11,12].map(i=>val(r[i])),dry:num(r[16]),open:num(r[17]),tack:tack&&tack!=='-'?tack:null,src:'xlsx:'+f.name,added:new Date().toISOString().slice(0,10)}); }
+      rows.push({m,a,b:clean(r[6])||'INTERCOM',k:'WB',t:[9,10,11,12].map(i=>val(r[i])),dry:num(r[16]),open:num(r[17]),tack:tack&&tack!=='-'?tack:null,src:'xlsx:'+f.name,added:new Date().toISOString().slice(0,10)}); }
     if(!rows.length)throw new Error('no test rows found — check the column layout');
     stageRows(rows,f.name);
   }catch(err){toast('Could not read file: '+err.message,true);} ev.target.value=''; };
@@ -544,17 +620,18 @@ function fillLists(){
   $('dlTypes').innerHTML=types.map(t=>`<option value="${esc(t)}">`).join(''); $('dlMats').innerHTML=mats.map(m=>`<option value="${esc(m)}">`).join(''); $('dlAdh').innerHTML=adhs.map(a=>`<option value="${esc(a)}">`).join('');
 }
 $('admSame').addEventListener('change',e=>{$('f_t2').disabled=$('f_m2').disabled=e.target.checked;});
+$('f_sys').addEventListener('change',e=>{const hm=e.target.value==='HM';$('rowWB').hidden=hm;$('rowWB2').hidden=hm;$('rowHM').hidden=!hm;if(hm){$('f_b').value='ALC';}else if($('f_b').value==='ALC'){$('f_b').value='INTERCOM';}});
 $('admForm').addEventListener('submit',e=>{
   e.preventDefault(); const g=id=>$(id).value;
   const t1=clean(g('f_t1')), m1=clean(g('f_m1')); if(!t1||!m1){toast('Product type and material 1 are required.',true);return;}
   const same=$('admSame').checked; const t2=same?t1:clean(g('f_t2')), m2=same?m1:clean(g('f_m2')); const m3=clean(g('f_m3'));
   const ad=clean(g('f_a')); if(!ad){toast('Adhesive name is required.',true);return;}
-  const t=['f_v0','f_v1','f_v2','f_v3'].map(id=>val(g(id))); if(t.every(v=>v==null)){toast('Enter at least one tensile value (or PB).',true);return;}
+  const hm=g('f_sys')==='HM'; const t=hm?[val(g('f_h0'))]:['f_v0','f_v1','f_v2','f_v3'].map(id=>val(g(id))); if(t.every(v=>v==null)){toast(hm?'Enter the bond strength (kgf/cm or PB).':'Enter at least one tensile value (or PB).',true);return;}
   const DB=window.__DB; DB.materials[m1]=DB.materials[m1]||t1; if(m2)DB.materials[m2]=DB.materials[m2]||t2||t1; if(m3)DB.materials[m3]=DB.materials[m3]||clean(g('f_t3'))||'OTHER';
   const a=ad.replace(/ /g,''); DB.adhesives[a]=DB.adhesives[a]||ad;
   const m=[m1]; if(m2)m.push(m2); if(m3)m.push(m3);
-  stageRows([{m,a,b:clean(g('f_b'))||'INTERCOM',t,dry:num(g('f_dry')),open:num(g('f_open')),tack:clean(g('f_tack'))||null,cust:clean(g('f_cust'))||null,note:g('f_note').trim()||null,by:g('f_by').trim()||null,src:'manual',added:g('f_date')||new Date().toISOString().slice(0,10)}],'Test report');
-  ['f_a','f_v0','f_v1','f_v2','f_v3','f_dry','f_open','f_note'].forEach(id=>$(id).value='');
+  stageRows([hm?{m,a,b:clean(g('f_b'))||'ALC',k:'HM',t,gsm:num(g('f_gsm')),tu:num(g('f_tu')),tl:num(g('f_tl')),pr:num(g('f_pr')),rem:clean(g('f_rem'))||null,cust:clean(g('f_cust'))||null,note:g('f_note').trim()||null,by:g('f_by').trim()||null,src:'manual',added:g('f_date')||new Date().toISOString().slice(0,10)}:{m,a,b:clean(g('f_b'))||'INTERCOM',k:'WB',t,dry:num(g('f_dry')),open:num(g('f_open')),tack:clean(g('f_tack'))||null,cust:clean(g('f_cust'))||null,note:g('f_note').trim()||null,by:g('f_by').trim()||null,src:'manual',added:g('f_date')||new Date().toISOString().slice(0,10)}],'Test report');
+  ['f_a','f_v0','f_v1','f_v2','f_v3','f_dry','f_open','f_note','f_h0','f_gsm','f_tu','f_tl','f_pr','f_rem'].forEach(id=>$(id).value='');
 });
 $('admPending').addEventListener('click',e=>{const b=e.target.closest('[data-unstage]');if(!b)return;pending.splice(+b.dataset.unstage,1);renderPending();});
 // ---- token storage (encrypted with the admin key)
@@ -586,8 +663,8 @@ $('admPubBtn').addEventListener('click',publish);
 $('admExport').addEventListener('click',()=>{
   if(typeof XLSX==='undefined'){toast('Excel writer not loaded (needs internet).',true);return;}
   const DB=window.__DB; const rows=DB.rows.concat(pending);
-  const data=[['PRODUCT TYPE – MATERIAL 1','MATERIAL 1','PRODUCT TYPE – MATERIAL 2','MATERIAL 2','PRODUCT TYPE – MATERIAL 3','MATERIAL 3','ADHESIVE BRAND','ADHESIVE TYPE','ADHESIVE NAME','TENSILE @ 2 MIN','TENSILE @ 15 MIN','TENSILE @ 60 MIN','TENSILE @ 24 HRS','CUSTOMER TAGS','DRYING TIME (SEC)','OPEN TIME (MIN)','TACK','SOURCE','ADDED','BY','NOTE']];
-  rows.forEach(r=>{const m=r.m; data.push([DB.materials[m[0]]||'',m[0]||'',m[1]?DB.materials[m[1]]||'':'',m[1]||'',m[2]?DB.materials[m[2]]||'':'',m[2]||'',r.b||'','WATER BASED ADHESIVES',DB.adhesives[r.a]||r.a,...r.t.map(v=>v==null?'-':v),r.cust||'',r.dry??'',r.open??'',r.tack||'',r.src||'',r.added||'',r.by||'',r.note||'']);});
+  const data=[['PRODUCT TYPE – MATERIAL 1','MATERIAL 1','PRODUCT TYPE – MATERIAL 2','MATERIAL 2','PRODUCT TYPE – MATERIAL 3','MATERIAL 3','ADHESIVE BRAND','ADHESIVE TYPE','ADHESIVE NAME','TENSILE @ 2 MIN','TENSILE @ 15 MIN','TENSILE @ 60 MIN','TENSILE @ 24 HRS','CUSTOMER TAGS','DRYING TIME (SEC)','OPEN TIME (MIN)','TACK','SYSTEM','BOND STRENGTH (KGF/CM)','GSM','TEMP UPPER','TEMP LOWER','PRESSURE','REMARK','SOURCE','ADDED','BY','NOTE']];
+  rows.forEach(r=>{const m=r.m; data.push([DB.materials[m[0]]||'',m[0]||'',m[1]?DB.materials[m[1]]||'':'',m[1]||'',m[2]?DB.materials[m[2]]||'':'',m[2]||'',r.b||'','WATER BASED ADHESIVES',DB.adhesives[r.a]||r.a,...(r.k==='HM'?['-','-','-','-']:r.t.map(v=>v==null?'-':v)),r.cust||'',r.dry??'',r.open??'',r.tack||'',r.k==='HM'?'HOT MELT':'WATER BASED',r.k==='HM'?(r.t[0]??'-'):'',r.gsm??'',r.tu??'',r.tl??'',r.pr??'',r.rem||'',r.src||'',r.added||'',r.by||'',r.note||'']);});
   const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),'TESTS'); XLSX.writeFile(wb,`Glue-Selector-data_${new Date().toISOString().slice(0,10)}.xlsx`);
 });
 window.__openAdmin=async function(){ $('admin').hidden=false; fillLists(); renderPending(); $('admTokState').textContent=(await loadToken())?'Token saved on this device.':'No token saved on this device yet.'; $('admin').scrollIntoView({behavior:'smooth'}); };
