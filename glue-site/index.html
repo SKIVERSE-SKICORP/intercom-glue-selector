@@ -88,6 +88,7 @@ tr.main{cursor:pointer}
 .note{font-size:12px;color:var(--muted);margin:10px 0 0;display:flex;flex-wrap:wrap;gap:4px 18px}
 .note b{font-family:var(--mono);font-weight:600;color:var(--ink)}
 .pairs{margin-top:22px}
+.sec{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:11px;margin-right:6px;vertical-align:middle}
 .gap{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:14px}
 .gap-col{background:var(--panel);border:1px solid var(--line);padding:12px;min-width:0;overflow-x:auto}
 table.mini{min-width:0;font-size:12px}
@@ -190,41 +191,44 @@ $('segN').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)
 const hit=(s,n)=>s.m?n===s.m:DB.materials[n]===s.t;
 const lab=s=>s.m||('ANY '+s.t);
 function matProfile(s){
-  const self={},any={};
+  // COMPATIBILITY profile: only self-bond rows (material 1 = material 2, no material 3) of this article / type
+  const self={};
   for(const r of ROWS()){
-    if(!r.m.some(n=>hit(s,n)))continue;
-    const isSelf=r.m.every(n=>hit(s,n));
-    const tgt=isSelf?self:any;
-    const p=tgt[r.a]||(tgt[r.a]={t:[null,null,null,null],n:0,dry:r.dry,open:r.open,tack:r.tack,src:isSelf?'self':'pair'});
+    if(!r.m.every(n=>hit(s,n)))continue;
+    const p=self[r.a]||(self[r.a]={t:[null,null,null,null],n:0,dry:r.dry,open:r.open,tack:r.tack,src:'self'});
     p.n++; r.t.forEach((v,i)=>{if(score(v)>score(p.t[i]))p.t[i]=v;});
     if(p.dry==null)p.dry=r.dry; if(p.open==null)p.open=r.open; if(!p.tack)p.tack=r.tack;
   }
-  const out={...any,...self}; return out;
+  return self;
 }
 function rankKey(t){
   if(rankBy==='all'){const s=t.map(score);return [s.reduce((a,b)=>a+Math.max(b,0),0)+(s.some(x=>x<0)?-1000:0),s[3]];}
   return [score(t[+rankBy]),score(t[3])];
 }
 function cmp(a,b){const ka=rankKey(a.t),kb=rankKey(b.t);return kb[0]-ka[0]||kb[1]-ka[1];}
+const valsLine=t=>T.map((n,i)=>`${n} <b>${t[i]==='PB'?'PB':(t[i]==null?'n/t':t[i].toFixed(2))}</b>`).join(' · ');
+function sideBySide(profiles,sel){
+  return `<div class="gap">${profiles.map((p,i)=>{const list=Object.keys(p).map(a=>({a,t:p[a].t,n:p[a].n})).sort(cmp);
+    return `<div class="gap-col"><h2>${esc(sel[i])} <span class="tag">${list.length} glues</span></h2>${list.length?`<table class="mini"><thead><tr><th>Adhesive</th>${T.map(n=>`<th class="num">${n}</th>`).join('')}</tr></thead><tbody>${list.map(r=>`<tr><td class="glue">${esc(DB.adhesives[r.a]||r.a)}</td>${r.t.map(v=>`<td class="num">${fmt(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'<p class="note">No compatibility test on this article (never tested bonded to itself).</p>'}</div>`;}).join('')}</div>`;
+}
 
 function renderResult(){
   const selS=slots.filter(s=>s.t); const sel=selS.map(lab);
   const el=$('result');
-  if(sel.length===0){window.__LAST=null;$('pdfBtn').disabled=true;el.innerHTML='<div class="empty">Pick a product type in slot 1 (and a material name if you want) to see the ranked adhesives. Add a second (and third) material to find the glues that work on all of them.</div>';return;}
-  let profiles=selS.map(matProfile);
-  // common adhesives
-  let common=Object.keys(profiles[0]).filter(a=>profiles.every(p=>p[a]));
-  const widened=[]; window.__labels=null;
+  if(sel.length===0){window.__LAST=null;$('pdfBtn').disabled=true;el.innerHTML='<div class="empty">Pick a product type (and a material name if you want) for Material 1 — and Material 2 for a pair. Search works by material name or by whole product type.</div>';return;}
+  const label=rankBy==='all'?'all four time points':T[+rankBy];
+  // ---------- SECTION 1: COMPATIBILITY (self-bond rows only)
+  const profiles=selS.map(matProfile);
+  const common=Object.keys(profiles[0]).filter(a=>profiles.every(p=>p[a]));
   const rows=common.map(a=>{
     const per=profiles.map(p=>p[a]);
     const t=[0,1,2,3].map(i=>{let w=null,ws=Infinity;per.forEach(p=>{const s=score(p.t[i]);if(s<ws){ws=s;w=p.t[i];}});return w;});
     return {a,t,per,n:per.reduce((x,p)=>x+p.n,0),dry:per[0].dry,open:per[0].open,tack:per[0].tack};
   }).sort(cmp);
-  // direct pair tests (exact material set)
+  // ---------- SECTION 2: COMBINATION (rows that are exactly this combination)
   const key=selS.map((s,i)=>i).sort().join('|');
   const pairMap={};
-  for(const r of ROWS()){
-    if(sel.length<2)break;
+  if(sel.length>1)for(const r of ROWS()){
     const idx=r.m.map(n=>{let k=selS.findIndex(s=>s.m&&hit(s,n));if(k<0)k=selS.findIndex(s=>!s.m&&hit(s,n));return k;});
     if(idx.some(k=>k<0))continue;
     const rk=[...new Set(idx)].sort().join('|'); if(rk!==key)continue;
@@ -234,33 +238,37 @@ function renderResult(){
   const pairs=Object.values(pairMap).sort(cmp);
 
   let h='';
-  const label=rankBy==='all'?'all four time points':T[+rankBy];
-  const lead=(pairs[0]||rows[0]);
+  const lead=pairs[0]||rows[0];
   if(lead){
-    const src=pairs[0]?'tested as this exact combination':`weakest-link across ${sel.length} material${sel.length>1?'s':''}`;
+    const src=pairs[0]?`from the combination test (${sel.map(esc).join(' + ')} tested directly)`:(sel.length>1?`from the compatibility test — common glue, weakest-link across ${sel.length} materials`:'from the compatibility test');
     h+=`<div class="verdict"><div class="k">Recommended · ranked by ${label}</div><div class="glue">${esc(DB.adhesives[lead.a]||lead.a)}</div>
-      <div class="why">${T.map((n,i)=>`${n} <b>${lead.t[i]==='PB'?'PB':(lead.t[i]==null?'—':lead.t[i].toFixed(2))}</b>`).join(' · ')} N/mm — ${src}${lead.tack?` · tack ${esc(lead.tack)}`:''}${lead.open!=null?` · open time ${lead.open} min`:''}</div></div>`;
+      <div class="why">${valsLine(lead.t)} N/mm — ${src}${lead.tack?` · tack ${esc(lead.tack)}`:''}${lead.open!=null?` · open time ${lead.open} min`:''}</div></div>`;
   } else {
-    h+=`<div class="empty">No adhesive has been tested on both ${sel.map(esc).join(' and ')}. Tested so far on each (ranked by 24 hrs):</div>
-      <div class="gap">${profiles.map((p,i)=>{const list=Object.keys(p).map(a=>({a,t:p[a].t,n:p[a].n})).sort(cmp);
-        return `<div class="gap-col"><h2>${esc(sel[i])} <span class="tag">${list.length} glues</span></h2>${list.length?`<table class="mini"><thead><tr><th>Adhesive</th>${T.map(n=>`<th class="num">${n}</th>`).join('')}</tr></thead><tbody>${list.map(r=>`<tr><td class="glue">${esc(DB.adhesives[r.a]||r.a)}</td>${r.t.map(v=>`<td class="num">${fmt(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`:'<p class="note">No tests on this article.</p>'}</div>`;}).join('')}</div>
-      <p class="note">To get a recommendation, test the missing glues on ${sel.map(esc).join(' or ')} and reload the sheet.</p>`;
+    h+=`<div class="empty">No recommendation possible: no common compatibility glue and no direct combination test for ${sel.map(esc).join(' + ')}.</div>`;
   }
-  {const gaps=profiles.map((p,i)=>({m:sel[i],miss:[0,1,2].filter(t=>Object.values(p).every(x=>x.t[t]==null)).map(t=>T[t])})).filter(g=>g.miss.length);
+  {const gaps=profiles.map((p,i)=>({m:sel[i],miss:Object.keys(p).length?[0,1,2].filter(t=>Object.values(p).every(x=>x.t[t]==null)).map(t=>T[t]):[]})).filter(g=>g.miss.length);
     window.__GAPS=gaps.map(g=>`${g.m} at ${g.miss.join(' / ')}`).join('; ');
     if(gaps.length)h+=`<p class="note" style="margin:0 0 12px"><span style="color:var(--amber)">Not tested in the sheet: ${gaps.map(g=>`${esc(g.m)} at ${g.miss.join(' / ')}`).join('; ')} — only the measured time points can be ranked.</span></p>`;}
-  if(pairs.length){
-    h+=`<div class="pairs"><h2>Tested directly as ${sel.map(esc).join(' + ')} <span class="tag">${pairs.length} adhesives</span></h2>${table(pairs,false)}</div>`;
+
+  // Section 1 render
+  h+=`<div class="pairs"><h2><span class="sec">1</span> Compatibility test · material bonded to itself <span class="tag">${sel.length>1?`${rows.length} common glues`:`${rows.length} glues`}</span></h2>`;
+  if(sel.length===1){
+    h+=rows.length?table(rows,false):`<div class="empty">No compatibility test on ${esc(sel[0])} in the sheet.</div>`;
+  } else if(rows.length){
+    h+=`<p class="note" style="margin:0 0 8px">Glues tested on every selected material — weakest-link value shown; click a row to see each material.</p>`+table(rows,true);
+  } else {
+    h+=`<div class="empty">No common glue across ${sel.map(esc).join(' and ')}. Each material's own compatibility results, side by side:</div>`+sideBySide(profiles,sel);
   }
-  if(widened.length){
-    h+=`<p class="note" style="margin:0 0 12px"><span style="color:var(--amber)">No glue has been tested on ${widened.map(esc).join(' and ')} together with the other selection — results use the whole product type (${widened.map(m=>esc(DB.materials[m])).join(', ')}) for ${widened.length>1?'those articles':'that article'}.</span></p>`;
+  h+=`</div>`;
+  // Section 2 render
+  if(sel.length>1){
+    h+=`<div class="pairs"><h2><span class="sec">2</span> Combination test · ${sel.map(esc).join(' + ')} bonded directly <span class="tag">${pairs.length} glues</span></h2>`;
+    h+=pairs.length?table(pairs,false):`<div class="empty">No direct combination test found for ${sel.map(esc).join(' + ')}.</div>`;
+    h+=`</div>`;
   }
-  if(sel.length>=1&&rows.length){
-    h+=`<div class="pairs"><h2>${sel.length>1?`Adhesives tested on every selected material — weakest-link value shown`:`All adhesives tested on ${esc(sel[0])}`} <span class="tag">${rows.length} adhesives</span></h2>${table(rows,sel.length>1)}
-      <p class="note"><span><b>PB</b> = material broke before the bond (strongest possible result)</span><span><b>n/t</b> = not tested in the sheet</span><span>Per cell the best reading across repeat tests (and across all materials of a type when ANY is chosen) is used</span>${sel.length>1?'<span>Weakest-link = the lowest of the materials\' individual values; click a row to see each material</span>':''}</p></div>`;
-  }
-  window.__LAST={sel,types:selS.map(s=>s.t),lead,leadName:lead?(DB.adhesives[lead.a]||lead.a):'',direct:!!pairs[0],pairs,rows,label,rankBy,names:DB.adhesives,gaps:(window.__GAPS||'')};
-  $('pdfBtn').disabled=!lead;
+  h+=`<p class="note"><span><b>PB</b> = material broke before the bond (strongest possible result)</span><span><b>n/t</b> = not tested in the sheet</span><span>Best reading across repeat tests per cell (and across all articles of a type when ANY is chosen)</span></p>`;
+  window.__LAST={sel,types:selS.map(s=>s.t),lead,leadName:lead?(DB.adhesives[lead.a]||lead.a):'',direct:!!pairs[0],pairs,rows,side:(sel.length>1&&!rows.length)?profiles.map(p=>Object.keys(p).map(a=>({a,t:p[a].t,n:p[a].n})).sort(cmp)):null,label,rankBy,names:DB.adhesives,gaps:(window.__GAPS||'')};
+  $('pdfBtn').disabled=!(lead||(window.__LAST.side&&window.__LAST.side.some(l=>l.length)));
   el.innerHTML=h;
 }
 function table(list,expandable){
@@ -349,7 +357,7 @@ window.__exportPDF=async function(L,meta){
   // recommendation
   if(L.lead){
     fill(TEAL); d.roundedRect(M,y,W-2*M,44,2,2,'F');
-    col([255,255,255]); font('normal',7.5); txt(`RECOMMENDED ADHESIVE  ·  ranked by ${L.label}${L.direct?'  ·  tested as this exact combination':'  ·  weakest-link across materials'}`,M+6,y+8);
+    col([255,255,255]); font('normal',7.5); txt(`RECOMMENDED ADHESIVE  ·  ranked by ${L.label}${L.direct?'  ·  from combination test (bonded directly)':'  ·  from compatibility test'+(L.sel.length>1?' (common glue, weakest-link)':'')}`,M+6,y+8);
     font('bold',26); txt(L.leadName,M+6,y+21);
     font('normal',8); const sub=[L.lead.tack?`tack ${L.lead.tack}`:null,L.lead.open!=null?`open time ${L.lead.open} min`:null,L.lead.dry!=null?`drying ${L.lead.dry} s`:null,`${L.lead.n} test${L.lead.n>1?'s':''}`].filter(Boolean).join('   ·   '); txt(sub,M+6,y+39);
     const tw=26,tx0=W-M-6-tw*4-3*3;
@@ -382,8 +390,17 @@ window.__exportPDF=async function(L,meta){
     if(rows.length>15){col(MUTED);font('normal',6.5);txt(`${rows.length-15} more adhesives not shown — see the app for the full list.`,M,y+4);y+=6;}
     y+=6;
   };
-  if(L.pairs.length)table(`Tested directly as ${L.sel.join(' + ')} — ${L.pairs.length} adhesives`,L.pairs,false);
-  if(L.rows.length)table(L.sel.length>1?`Adhesives tested on every selected material — weakest-link values — ${L.rows.length} adhesives`:`All adhesives tested on ${L.sel[0]} — ${L.rows.length}`,L.rows,true);
+  if(L.rows.length)table(`1 · Compatibility test (material bonded to itself) — ${L.sel.length>1?'common glues, weakest-link values':'results'} — ${L.rows.length} adhesives`,L.rows,true);
+  else if(L.side){ if(y>H-60){d.addPage();y=20;} col(MUTED); font('bold',8); txt(`1 · COMPATIBILITY TEST — NO COMMON GLUE; EACH MATERIAL'S OWN RESULTS`,M,y); y+=4;
+    L.side.forEach((list,k)=>{ if(y>H-40){d.addPage();y=20;} col(INK); font('bold',7.5); txt(d.splitTextToSize(L.sel[k],W-2*M)[0],M,y+3); y+=5;
+      if(!list.length){col(MUTED);font('italic',7);txt('No compatibility test on this article.',M+2,y+3);y+=7;return;}
+      fill(PALE); d.rect(M,y,W-2*M,6,'F'); col(INK); font('bold',6.5); txt('ADHESIVE',M+2,y+4.2); T.forEach((t,i)=>txt(t.toUpperCase(),M+90+i*22+18,y+4.2,{align:'right'})); y+=6;
+      list.slice(0,12).forEach(r=>{line(LINE);d.setLineWidth(0.2);d.line(M,y+5.8,W-M,y+5.8); col(INK); font('bold',7.5); txt(L.names[r.a]||r.a,M+2,y+4.2); font('normal',7.2); r.t.forEach((v,i)=>{col(v==='PB'?AMBER:(v==null?MUTED:INK));txt(fv(v),M+90+i*22+18,y+4.2,{align:'right'});}); y+=5.8;});
+      y+=5; });
+    y+=4; }
+  else { col(MUTED); font('bold',8); txt('1 · COMPATIBILITY TEST — no self-bond test in the sheet for this selection',M,y); y+=8; }
+  if(L.sel.length>1){ if(L.pairs.length)table(`2 · Combination test — ${L.sel.join(' + ')} bonded directly — ${L.pairs.length} adhesives`,L.pairs,false);
+    else { if(y>H-30){d.addPage();y=20;} col(MUTED); font('bold',8); txt(`2 · COMBINATION TEST — no direct combination test found for ${L.sel.join(' + ')}`,M,y); y+=8; } }
   // per-material breakdown for the best glue
   if(L.lead&&L.lead.per&&L.lead.per.length>1){
     if(y>H-45){d.addPage();y=20;}
