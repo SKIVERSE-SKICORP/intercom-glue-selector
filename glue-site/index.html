@@ -153,7 +153,7 @@ table.mini td.glue{font-size:13px}
 window.__startApp=function(){
 const T=['2 min','15 min','60 min','24 hrs'];
 let DB=window.__DB;
-let slots=[{mode:'name',t:'',m:'',f:''},{mode:'name',t:'',m:'',f:''},{mode:'name',t:'',m:'',f:''}];
+let slots=[{mode:'type',t:'',m:'',f:''},{mode:'type',t:'',m:'',f:''},{mode:'type',t:'',m:'',f:''}];
 let rankBy='3', topN=10, open=new Set(), brand='';
 const ROWS=()=>DB.rows.filter(r=>!brand||r.b===brand);
 const NB=()=>{const rs=ROWS();return {t:rs.length,m:new Set(rs.flatMap(r=>r.m)).size,a:new Set(rs.map(r=>r.a)).size};};
@@ -169,7 +169,7 @@ function matsOf(t){return Object.keys(DB.materials).filter(k=>DB.materials[k]===
 function renderSlots(){
   const el=$('slots'); el.innerHTML='';
   slots.forEach((s,i)=>{
-    const mode=s.mode||'name';
+    const mode=s.mode||'type';
     const d=document.createElement('div'); d.className='slot'+(i>0&&!slots[i-1].t&&!s.t?' off':'');
     const active=s.t||s.m;
     let body='';
@@ -183,7 +183,7 @@ function renderSlots(){
       <p class="hint">Uses every article of this type (best reading per glue).</p>`;
     }
     d.innerHTML=`<div class="slot-h"><span><span class="n">Material ${i+1}</span>${i>1?' <span class="tag">optional</span>':''}</span>${active?`<button class="btn-x" data-clear="${i}">clear</button>`:''}</div>
-      <div class="seg mode" data-i="${i}"><button type="button" id="modeName${i}" data-mode="name" aria-pressed="${mode==='name'}">Search by material name</button><button type="button" id="modeType${i}" data-mode="type" aria-pressed="${mode==='type'}">Search by product type</button></div>
+      <div class="seg mode" data-i="${i}"><button type="button" id="modeType${i}" data-mode="type" aria-pressed="${mode==='type'}">Search by product type</button><button type="button" id="modeName${i}" data-mode="name" aria-pressed="${mode==='name'}">Search by material name</button></div>
       ${body}`;
     el.appendChild(d);
   });
@@ -196,7 +196,7 @@ $('slots').addEventListener('change',e=>{
   open.clear(); renderSlots(); renderResult();
 });
 $('slots').addEventListener('click',e=>{
-  if(e.target.dataset.clear!=null){const i=+e.target.dataset.clear;slots[i]={mode:slots[i].mode||'name',t:'',m:'',f:''};open.clear();renderSlots();renderResult();return;}
+  if(e.target.dataset.clear!=null){const i=+e.target.dataset.clear;slots[i]={mode:slots[i].mode||'type',t:'',m:'',f:''};open.clear();renderSlots();renderResult();return;}
   const mb=e.target.closest('.mode button'); if(mb){const i=+mb.closest('.mode').dataset.i; slots[i]={mode:mb.dataset.mode,t:'',m:'',f:''}; open.clear(); renderSlots(); renderResult();}
 });
 $('pdfBtn').addEventListener('click',()=>{if(window.__LAST&&window.__LAST.lead)window.__exportPDF(window.__LAST,`${brand||'all brands'} · ${ROWS().length} tests`);});
@@ -317,7 +317,7 @@ function brands(){const bs=[...new Set(DB.rows.map(r=>r.b))].sort();const el=$('
 $('brand').addEventListener('change',e=>{brand=e.target.value;$('brandMeta').textContent=(brand||'All brands')+' · water-based adhesives · tensile N/mm';open.clear();stats();renderResult();});
 function stats(){const n=NB();$('nTests').textContent=n.t;$('nMats').textContent=n.m;$('nAdh').textContent=n.a;}
 // opening state: a real working example
-slots[0]={mode:'name',t:'LEATHER',m:'LEATHER -SOFT',f:''}; slots[1]={mode:'name',t:'PU / PVC / SYNTHETIC LEATHER',m:'SYNTHETIC PU LEATHER WITH KNITTED POLYESTER 3 - SIRACO',f:''};
+slots[0]={mode:'type',t:'LEATHER',m:'',f:''}; slots[1]={mode:'type',t:'LEATHERBOARD',m:'',f:''};
 brands(); stats(); renderSlots(); renderResult();
 // The viewer may restore earlier dropdown values after load without firing change events: reconcile DOM -> state.
 function reconcile(){
@@ -326,7 +326,7 @@ function reconcile(){
   if(bEl.value!==brand){ if(bs.includes(bEl.value)&&(bEl.value||bs.length>1)){brand=bEl.value;changed=true;} else bEl.value=brand; }
   slots.forEach((s,i)=>{
     const tEl=$('type'+i), mEl=$('mat'+i); if(!tEl)return;
-    if((s.mode||'name')==='name'){
+    if((s.mode||'type')==='name'){
       const f=tEl.value, m=mEl?mEl.value:'';
       if(f!==(s.f||'')){ s.f=types().includes(f)?f:''; if(s.m&&s.f&&DB.materials[s.m]!==s.f)s.m=''; s.t=s.m?DB.materials[s.m]:''; changed=true; }
       else if(m!==s.m){ s.m=DB.materials[m]?m:''; s.t=s.m?DB.materials[s.m]:''; changed=true; }
